@@ -1,0 +1,99 @@
+---
+title: "Introduction to CART"
+---
+Classification And Regression Tree approach (CART) can be used in both classification (nominal type of outcome variable) and regression tasks (numeric outcome). Several algorithms were designed for identification of the three (split rules and model's complexity). CART is also a name of an old algorithm which is copyright-protected. In R `rpart` (Recursive Partitioning and Regression Trees) name is used instead. 
+
+
+In this document library `rpart` will be demonstrated in connection with `rattle` package which contains nice visualisation dunction `fancyRpartPlot`.
+
+
+```{r, libraries}
+suppressPackageStartupMessages( library(dplyr) )
+library(rpart) #install.packages("rpart")
+suppressMessages( library(rattle) )#install.packages("rattle")
+library(datasets) # install.packages("datasets")
+```
+
+We will demonstrate `rpart` abilities on a toy example from `mtcars`
+
+```{r, data}
+data(mtcars)
+head(mtcars)
+str(mtcars)
+```
+
+All variables are numerical. New variable *heavy_car* will be created by following rule:
+
+```{r}
+mtcars$heavy_car <- ifelse(mtcars$wt > 3, "heavy", "light")
+table(mtcars$heavy_car)
+prop.table(table(mtcars$heavy_car) )
+```
+After this rule is applied `r table(mtcars$heavy_car)[2]` cars is assigned as *heavy*. This represents `r prop.table(table(mtcars$heavy_car) )[2] ` of all cars.
+
+## Classification
+
+Now, the task would be to estimate whether particular car is heavy or not given the set of covariates *hp, qsec* (horse power and 1/4 mile time). Model is created as:
+
+```{r, classif_model}
+fit.c <- rpart(heavy_car ~ hp + qsec, data = mtcars)
+```
+
+Elementary visualisation can be done directly from the `plot` function. To create nicer plot, `rattle::fancyRpartPlot` will be used instead.
+
+```{r, visualise_rpart.c}
+fancyRpartPlot(fit.c, sub="") # sub parameter removes subtitle
+```
+
+The best way how to decide about the class is to use variable *hp*. In the top of the tree green node is showed. Word *heavy* represents majority group in this level of decison. Colour represents the class. Two numbers below correspond to proportions of classes. Check the proportion discussed above. If the car's horse power exceeds value 118, car is assigned as a heavy car.
+
+```{r, rpart_res}
+fit.c
+```
+
+Now, after the model is learned, it's possible to classify all cars according to rules created in the `fit.c` model. Following outcome shows probability of being in the group denoted in the column name.
+
+```{r, prediction_c_prob}
+predict(fit.c) %>% head(5)
+```
+If you prefer direct label, you just change parameter in the `predict` function:
+
+```{r, prediction_c_class}
+predict(fit.c, type="class") %>% head(5)
+```
+
+## Regression
+
+Now we will try to estimate the fuel consumption given the covariates *hp, qsec, wt*.
+
+```{r, regression_model}
+fit.r <- rpart(mpg ~ hp + qsec + wt, data = mtcars)
+```
+Inspect the model in textual form:
+
+```{r, textual_rpart.r}
+fit.r
+```
+
+and in a visual form:
+```{r, visualise_rpart.r}
+fancyRpartPlot(fit.r, sub="")
+```
+
+Finally, make a prediction of the fuel consumption (*mpg*): 
+```{r, prediction_r}
+predict(fit.r) %>% head(5)
+```
+Check the correctness:
+
+```{r}
+results <- data.frame(mpg.real=mtcars$mpg, mpg.predicted = predict(fit.r))
+
+results %>% head(5)
+
+plot(results$mpg.predicted ~ results$mpg.real)
+abline(a=0, b=1, col="red")
+```
+
+If the points would lie on the line, predicted values would be the same as real.
+
